@@ -95,16 +95,42 @@ public class UserDaoImpl implements UserDao {
 	}
 
 	@Override
-	public List<Category> readCategory(String user_id) {
-		EntityManager em = getEntityManager();
-		try {
-			return em.createQuery("SELECT c FROM Category c WHERE c.userId = :user_id", Category.class)
-					.setParameter("user_id", user_id).getResultList();
-		} finally {
-			em.close();
-		}
+	public List<Category> readCategory(String userId) {
+	    EntityManager em = getEntityManager();
+	    try {
+	        int intId = Integer.parseInt(userId);
+
+	        // Lấy roleId của user đăng nhập
+	        Integer roleId = em.createQuery(
+	                "SELECT u.roleid FROM User u WHERE u.id = :uid", Integer.class)
+	                .setParameter("uid", intId)
+	                .getSingleResult();
+
+	        List<Category> categories;
+
+	        if (roleId == 3) { // Admin: xem tất cả
+	            categories = em.createQuery(
+	                    "SELECT c FROM Category c LEFT JOIN FETCH c.user", Category.class)
+	                    .getResultList();
+	        } else if (roleId == 2) { // Manager: xem user + manager
+	            categories = em.createQuery(
+	                    "SELECT c FROM Category c LEFT JOIN FETCH c.user u WHERE u.roleid IN (1,2)",
+	                    Category.class)
+	                    .getResultList();
+	        } else { // User: chỉ xem của mình
+	            categories = em.createQuery(
+	                    "SELECT c FROM Category c LEFT JOIN FETCH c.user WHERE c.userId = :uid",
+	                    Category.class)
+	                    .setParameter("uid", intId)
+	                    .getResultList();
+	        }
+
+	        return categories;
+
+	    } finally {
+	        em.close();
+	    }
 	}
-	
 
 	@Override
 	public void updateCategory(String category_id, String name, String description, String user_id) {
